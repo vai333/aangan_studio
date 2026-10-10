@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Copies the production environment variables from .env.local to the linked Vercel project.
-# Usage: scripts/vercel-env.sh [production-url]   (needs `npx vercel link` first; uses $VERCEL_TOKEN if set)
+# Usage: scripts/vercel-env.sh [production-url]   (needs `npx --yes vercel link` first; uses $VERCEL_TOKEN if set)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 [ -f .env.local ] || { echo ".env.local not found"; exit 1; }
@@ -18,7 +18,7 @@ for k in "${REQUIRED[@]}"; do [ -n "${!k:-}" ] || { echo "✗ $k is empty"; miss
 [ $missing = 0 ] || exit 1
 
 push() { # name value
-  npx vercel env rm "$1" production --yes ${TOKEN_ARGS[@]+"${TOKEN_ARGS[@]}"} >/dev/null 2>&1 || true   # replace if it exists
-  printf '%s' "$2" | npx vercel env add "$1" production ${TOKEN_ARGS[@]+"${TOKEN_ARGS[@]}"} >/dev/null && echo "✓ $1"
+  npx --yes vercel env rm "$1" production --yes ${TOKEN_ARGS[@]+"${TOKEN_ARGS[@]}"} >/dev/null 2>&1 || true   # replace if it exists
+  printf '%s' "$2" | npx --yes vercel env add "$1" production ${TOKEN_ARGS[@]+"${TOKEN_ARGS[@]}"} >/dev/null && echo "✓ $1"
 }
 for k in "${REQUIRED[@]}" "${OPTIONAL[@]}"; do [ -n "${!k:-}" ] && push "$k" "${!k}" || { [[ " ${OPTIONAL[*]} " == *" $k "* ]] && echo "· $k not set (optional)"; }; done
