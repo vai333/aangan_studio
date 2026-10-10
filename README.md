@@ -49,6 +49,18 @@ The offline eval runs the golden gradings through the decision rules (20/20 toda
 | **Settings** | Call-report recipient, service areas, lead-time rules, designer roster and routing, unit prices, assumptions |
 | **Why it works this way** | Nikhil's FAQ, open questions where the case files disagree, decision records |
 
+## Deploy (GitHub + Vercel)
+
+**Make the GitHub repo private first.** It contains the studio's internal pricing guide (`context/pricing.md`), which is meant to stay confidential.
+
+```bash
+bash scripts/deploy.sh vai333/aangan_studio
+```
+
+The script pushes to GitHub, creates the Vercel project `aangan-studio`, copies every variable from `.env.local` to Vercel (`scripts/vercel-env.sh`), deploys, sets `APP_URL` to the production address, redeploys, and prints the Vaani webhook URL. It prompts for the GitHub and Vercel logins on first run. For a non-interactive run, export `VERCEL_TOKEN` first.
+
+Afterwards, in Vaani → Settings → Webhooks, paste the URL it printed (`npm run webhook:url` prints it again). The `?token=` part authenticates Vaani; it works whether or not Vaani signs its webhooks.
+
 ## Go live
 
 **Already done for you:** the Vaani agent "Aangan Studio" exists on your account, with the prompt, greeting, call limits and 14 data fields to extract. `VAANI_API_KEY` and `VAANI_AGENT_ID` are in `.env.local`. To re-apply the prompt after editing it: `npm run vaani:setup`.
@@ -63,9 +75,9 @@ The offline eval runs the golden gradings through the decision rules (20/20 toda
    - **Deal** for qualified and nurture leads only, named like `[P83] 4BHK · Koregaon Park · 2,400 sq ft — Aarti Mehta`. **No amount is ever set** (the studio never quotes prices). A decision later overridden to a decline moves the deal to closed/lost.
    - A HubSpot outage never affects calls or designer emails. Failed pushes are retried by the daily sweep, up to 5 times.
 6. **In the Vaani dashboard** (these three steps can't be done through their API):
-   - **Settings → Webhooks:** add `https://<your-app>/api/vaani/webhook`.
+   - **Settings → Webhooks:** add the URL from `npm run webhook:url` (`https://<your-app>/api/vaani/webhook?token=…`).
    - **Settings → Telephony:** provision a number, or connect your SIP trunk, and assign it to "Aangan Studio". Then publish the agent.
-   - If Vaani shows a webhook signing secret, put it in `VAANI_WEBHOOK_SECRET`.
+   - If Vaani also shows a webhook signing secret, put it in `VAANI_WEBHOOK_SECRET` (optional: the token already authenticates requests).
 7. **Resend.** Verify the studio's sending domain and set `EMAIL_FROM`. Until then Resend only delivers to the account owner's own address, so use that for `CALL_REPORT_EMAIL` first. Add a webhook to `/api/resend/webhook` for `email.bounced` and put its secret in `RESEND_WEBHOOK_SECRET`.
 8. **Smoke test.** Call the number, then watch the call and its transcript appear on **Transcripts**. If a webhook was missed, **Calls → Sync from Vaani** imports it.
 
