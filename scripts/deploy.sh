@@ -29,7 +29,8 @@ URL=$(npx --yes vercel deploy --prod --yes ${TOKEN_ARGS[@]+"${TOKEN_ARGS[@]}"} |
 echo "   deployed: $URL"
 
 echo "→ 5/6 Point APP_URL at the real production alias and redeploy"
-ALIAS=$(npx --yes vercel project inspect "$PROJECT" ${TOKEN_ARGS[@]+"${TOKEN_ARGS[@]}"} 2>/dev/null | awk '/Domains|\.vercel\.app/ {for(i=1;i<=NF;i++) if ($i ~ /\.vercel\.app$/) {print $i; exit}}')
+# Ask Vercel for the real production hostname; the plain project name is often taken (e.g. it became aangan-studio-chi)
+ALIAS=$(curl -s -H "Authorization: Bearer ${VERCEL_TOKEN:-$(python3 -c 'import json,os,glob; p=glob.glob(os.path.expanduser("~/Library/Application Support/com.vercel.cli/auth.json")); print(json.load(open(p[0]))["token"] if p else "")')}" "https://api.vercel.com/v9/projects/$PROJECT" | python3 -c 'import json,sys; d=json.load(sys.stdin); a=(d.get("targets",{}).get("production",{}) or {}).get("alias") or []; print(next((x for x in a if x.endswith(".vercel.app")), ""))')
 FINAL="https://${ALIAS:-$PROJECT.vercel.app}"
 printf '%s' "$FINAL" | { npx --yes vercel env rm APP_URL production --yes ${TOKEN_ARGS[@]+"${TOKEN_ARGS[@]}"} >/dev/null 2>&1 || true; npx --yes vercel env add APP_URL production ${TOKEN_ARGS[@]+"${TOKEN_ARGS[@]}"} >/dev/null; }
 npx --yes vercel deploy --prod --yes ${TOKEN_ARGS[@]+"${TOKEN_ARGS[@]}"} | tail -1
