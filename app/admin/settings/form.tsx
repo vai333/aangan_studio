@@ -120,7 +120,7 @@ export function SettingsForm({ initial, hubspotConnected = false }: { initial: S
           <label className="block text-sm">
             <span className="mb-1 block font-medium">Call report — email after every call</span>
             <input type="email" value={s.call_report_email} onChange={(e) => up("call_report_email", e.target.value.trim())} placeholder="owner@yourdomain.in" className={`${input} max-w-md`} />
-            <span className="mt-1 block text-xs text-muted">One summary email per call — answered, missed or dropped, qualified or not. Separate from the designer handoff. Leave blank to turn it off. While Resend is in test mode it can only deliver to the account owner&apos;s own address.</span>
+            <span className="mt-1 block text-xs text-muted">One summary email per call — answered, missed or dropped, qualified or not. Separate from the designer handoff, and skipped when this address already receives that call\u2019s handoff or escalation email (so you never get two near-identical emails). Leave blank to turn it off. While Resend is in test mode it can only deliver to the account owner&apos;s own address.</span>
           </label>
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">

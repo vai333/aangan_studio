@@ -4,7 +4,7 @@ Every phone enquiry to Aangan Studio gets answered, day or night, by a Vaani voi
 Gemini then grades the call against Nikhil's rubric (`qualified.md`), and deterministic code decides.
 Qualified leads reach a designer by email within about a minute, with everything already asked.
 Every caller also lands in **HubSpot** (contact + note + deal) so the founder has one view of the whole business, while designers work in this dashboard.
-Separately, **every call** (answered, missed, dropped, qualified or not) sends a summary email to one address of your choice.
+Separately, **every call** (answered, missed, dropped, qualified or not) sends a summary email to one address of your choice, unless that address already gets the call's designer handoff or escalation email (one email per address per call).
 Nikhil gets a dashboard showing every call, its verdict, what the system costs, and what it generates.
 
 ```

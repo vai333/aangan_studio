@@ -31,6 +31,7 @@ async function main() {
 
   for (const t of ["cost_events","call_reports","handoffs","escalations","overrides","assessments","calls","callers","webhook_events"]) await q(`truncate ${t} cascade`);
 
+  await q("update settings set data = '{}'::jsonb where id = 1"); // default settings: report address = escalation address = founder (cc on VIP leads)
   const golden = new Map(SEPTEMBER.map((c) => [`vaani-${c.label}`, c]));
   const grader = async (turns: unknown, ctx: { callDateIso: string }) => {
     const seed = [...golden.values()].find((c) => new Date(c.started_at).toISOString() === ctx.callDateIso)!;
@@ -58,11 +59,15 @@ async function main() {
   const wrong = live.filter((r) => { const l = SEPTEMBER.find((s) => `vaani-${s.label}` === r.call.vaani_call_id)!; return r.assessment?.decision !== l.expected; });
   check("every decision matches the golden label", wrong.length === 0, wrong.map((r) => `${r.call.vaani_call_id}:${r.assessment?.decision}`).join(","));
   check("T17 dropped call merged into the redial", recs.find((r) => r.call.vaani_call_id === "vaani-T17a")?.call.merged_into === recs.find((r) => r.call.vaani_call_id === "vaani-T17b")?.call.id);
-  check("a call report row for every graded enquiry", live.every((r) => r.report?.status === "sent"), `${live.filter((r) => r.report?.status === "sent").length}/20`);
-  check("report goes to the configured address", live.every((r) => r.report?.to_email === settings.call_report_email));
-  const q11 = live.filter((r) => ["QUALIFIED","QUALIFIED_WITH_NOTES"].includes(r.assessment!.decision));
-  check("handoff email for each qualified lead (11), none otherwise", live.filter((r) => r.handoff).length === q11.length && q11.length === 11, `${live.filter((r) => r.handoff).length}`);
-  check("no double sends: 21 reports (20 + the dropped call), 11 handoffs", (await q("select count(*)::int n from call_reports"))[0].n === 21 && (await q("select count(*)::int n from handoffs"))[0].n === 11);
+  // One email per address per call: the report is skipped when that address already gets the call's handoff or escalation email.
+  const to = settings.call_report_email.toLowerCase();
+  const getsHandoff = (r: (typeof live)[number]) => !!r.handoff && [r.handoff.designer_email, ...r.handoff.cc].map((x) => x.toLowerCase()).includes(to);
+  const getsEscalation = (r: (typeof live)[number]) => !!r.escalation && ["existing_client", "service_recovery"].includes(r.escalation.kind) && settings.escalation_email.toLowerCase() === to;
+  const covered = (r: (typeof live)[number]) => getsHandoff(r) || getsEscalation(r);
+  check("a report for every call that no other email already covers; none for the rest", live.every((r) => (covered(r) ? !r.report : r.report?.status === "sent")), `${live.filter((r) => r.report).length} reports, ${live.filter(covered).length} covered by a handoff/escalation`);
+  check("report goes to the configured address", live.filter((r) => r.report).every((r) => r.report?.to_email === settings.call_report_email));
+  check("never more than ONE email per address per call", live.every((r) => (r.report ? 1 : 0) + (getsHandoff(r) ? 1 : 0) + (getsEscalation(r) ? 1 : 0) <= 1));
+  check("11 handoffs, none duplicated", (await q("select count(*)::int n from handoffs"))[0].n === 11 && (await q("select count(*)::int n from (select call_id from handoffs group by 1 having count(*) > 1) x"))[0].n === 0);
   check("T09 escalation + escalation email", live.find((r) => r.call.vaani_call_id === "vaani-T09")?.escalation?.kind === "existing_client" && sent.some((s) => s.subject.startsWith("[ESCALATION")));
   check("T08 missed call queued for callback", live.find((r) => r.call.vaani_call_id === "vaani-T08")?.escalation?.kind === "callback");
   check("T16 service-recovery escalation", live.find((r) => r.call.vaani_call_id === "vaani-T16")?.escalation?.kind === "service_recovery");

@@ -81,7 +81,15 @@ export function buildOutcome(args: {
   }
 
   const to = s.call_report_email.trim();
-  const report = to
+  // The report is the "something happened" email for calls that otherwise email nobody (declines, missed calls, callbacks).
+  // When this address already receives the call's designer handoff (to or cc) or its escalation email, that email says it all,
+  // and a second near-identical message would just look like a duplicate.
+  const lower = (x: string) => x.trim().toLowerCase();
+  const alreadyMailed = new Set<string>([
+    ...(handoff ? [handoff.designer_email, ...handoff.cc] : []),
+    ...(escalationEmail ? [s.escalation_email] : []),
+  ].map(lower));
+  const report = to && !alreadyMailed.has(lower(to))
     ? { to, ...buildCallReportEmail({ call, assessment, handoff, escalation, dashboardUrl }) }
     : null;
 
