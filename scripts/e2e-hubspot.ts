@@ -132,6 +132,21 @@ async function main() {
   check("retry finishes the job without duplicating contact or deal", ok.status === "synced" && row2.note_id && store.deals.size === dealsAfterFail && store.contacts.size === phoneContacts);
   check("a bad token fails cleanly", await (async () => { process.env.HUBSPOT_ACCESS_TOKEN = "wrong"; const r = await inspectHubspot(); process.env.HUBSPOT_ACCESS_TOKEN = "test-token"; return !r.ok && /401/.test(r.error ?? ""); })());
 
+  // a browser/web call has no phone number: mirrored by name, one contact per call, no phone filter sent
+  const web = await ingestCall({ providerCallId: "webrtc-1-abc", phone: "unknown", startedAt: "2026-10-10T13:31:03.499Z", durationSec: 127, endReason: null, status: "answered",
+    transcript: [{ speaker: "caller", text: "I am Vaibhav, a 2BHK in Hinjewadi." }], recordingUrl: null, raw: {}, source: "webhook" });
+  await gradeCall(web!.id, { grader: (async () => ({ grading: { ...structuredClone(SEPTEMBER[0].grading!), extracted: { ...SEPTEMBER[0].grading!.extracted, name: "Vaibhav Tiwari", locality: "Hinjewadi" } }, model: "golden", inputTokens: 1, outputTokens: 1 })) as never });
+  const webRow = (await q("select * from hubspot_syncs where call_id = $1", [web!.id]))[0];
+  const webContact = store.contacts.get(webRow?.contact_id);
+  check("web call without a phone number is still mirrored (contact + note + deal)", webRow?.status === "synced" && !!webRow.deal_id && !!webRow.note_id, webRow?.last_error ?? "");
+  check("…the contact is named, and carries no phone property", webContact?.properties.firstname === "Vaibhav" && webContact.properties.lastname === "Tiwari" && !("phone" in webContact.properties));
+  const contactsBefore = store.contacts.size;
+  await pushCallToHubspot(web!.id);
+  check("…and re-pushing it creates no second contact", store.contacts.size === contactsBefore);
+  const emptyWeb = await ingestCall({ providerCallId: "webrtc-2-empty", phone: "unknown", startedAt: "2026-10-10T14:00:00.000Z", durationSec: 1, endReason: null, status: "missed", transcript: [], recordingUrl: null, raw: {}, source: "webhook" });
+  await gradeCall(emptyWeb!.id, { grader: grader as never });
+  check("a no-number, no-conversation call is skipped (nothing to record)", (await q("select status from hubspot_syncs where call_id = $1", [emptyWeb!.id]))[0]?.status === "skipped");
+
   console.log(`\n${calls.length} HubSpot API calls. ${fails.length ? "FAILED: " + fails.join("; ") : "ALL CHECKS PASSED"}`);
   server.close();
   process.exit(fails.length ? 1 : 0);

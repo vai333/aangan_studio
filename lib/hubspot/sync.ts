@@ -83,7 +83,10 @@ export async function pushCallToHubspot(callId: string): Promise<PushResult> {
       p.last_decision ?? row?.last_decision ?? null, p.status, p.attempts ?? row?.attempts ?? 0, p.last_error ?? null, p.status === "synced" ? new Date().toISOString() : row?.synced_at ?? null, p.ui_domain ?? row?.ui_domain ?? null]);
 
   if (call.merged_into) { await save({ status: "skipped", last_error: "merged into a later call" }); return { status: "skipped", reason: "merged" }; }
-  if (call.caller_phone === "unknown") { await save({ status: "skipped", last_error: "caller number unknown" }); return { status: "skipped", reason: "no phone number" }; }
+  // A caller with no number (a website / browser call) is still a lead worth seeing: mirror it by name.
+  // With neither a number nor a conversation there is nothing worth putting in a CRM.
+  const noPhone = call.caller_phone === "unknown";
+  if (noPhone && !(call.transcript ?? []).length) { await save({ status: "skipped", last_error: "no phone number and no conversation" }); return { status: "skipped", reason: "nothing to record" }; }
 
   const asm: Assessment = {
     id: a.id, call_id: a.call_id, grading: a.grading, decision: a.decision, decision_reasons: a.decision_reasons ?? [], decline_reason: a.decline_reason,
@@ -97,15 +100,17 @@ export async function pushCallToHubspot(callId: string): Promise<PushResult> {
   try {
     // ── contact (deduped by phone; repeat callers reuse theirs) ──
     const [first, ...rest] = (x.name ?? "").trim().split(/\s+/);
-    const props: Record<string, string> = { phone: call.caller_phone };
+    const props: Record<string, string> = noPhone ? {} : { phone: call.caller_phone };
     if (first) props.firstname = first;
     if (rest.length) props.lastname = rest.join(" ");
+    // HubSpot needs a name, email or phone to create a contact
+    if (noPhone && !first) props.lastname = `Web caller ${new Date(call.started_at).toISOString().slice(0, 10)}`;
     if (x.locality) props.city = x.locality;
     const status = LEAD_STATUS[decision];
     if (status) props.hs_lead_status = status;
 
     const upsertContact = async (p: Record<string, string>) => {
-      if (!contactId) contactId = await findContactByPhone(call.caller_phone);
+      if (!contactId && !noPhone) contactId = await findContactByPhone(call.caller_phone); // no number, so no dedupe: one contact per call
       if (contactId) await hs("PATCH", `/crm/v3/objects/contacts/${contactId}`, { properties: p });
       else contactId = (await hs<{ id: string }>("POST", "/crm/v3/objects/contacts", { properties: p })).id;
     };
@@ -153,7 +158,7 @@ export async function callsNeedingHubspot(limit = 25): Promise<string[]> {
     `select c.id from calls c
        join assessments a on a.call_id = c.id and a.is_current
        left join hubspot_syncs h on h.call_id = c.id
-      where c.grade_status = 'done' and c.merged_into is null and c.caller_phone <> 'unknown'
+      where c.grade_status = 'done' and c.merged_into is null and (c.caller_phone <> 'unknown' or jsonb_array_length(c.transcript) > 0)
         and (h.call_id is null or (h.status = 'failed' and h.attempts < 5))
       order by c.started_at desc limit $1`, [limit]);
   return rows.map((r) => r.id);
