@@ -59,7 +59,7 @@ bash scripts/deploy.sh vai333/aangan_studio
 
 The script pushes to GitHub, creates the Vercel project `aangan-studio`, copies every variable from `.env.local` to Vercel (`scripts/vercel-env.sh`), deploys, sets `APP_URL` to the production address, redeploys, and prints the Vaani webhook URL. It prompts for the GitHub and Vercel logins on first run. For a non-interactive run, export `VERCEL_TOKEN` first.
 
-Afterwards, in Vaani → Settings → Webhooks, paste the URL it printed (`npm run webhook:url` prints it again). The `?token=` part authenticates Vaani; it works whether or not Vaani signs its webhooks.
+Afterwards, in Vaani → Developers → Webhooks (Agent Webhook, with Aangan Studio selected), paste the URL it printed (`npm run webhook:url` prints it again). The `?token=` part authenticates Vaani; it works whether or not Vaani signs its webhooks.
 
 ## Go live
 
@@ -75,7 +75,7 @@ Afterwards, in Vaani → Settings → Webhooks, paste the URL it printed (`npm r
    - **Deal** for qualified and nurture leads only, named like `[P83] 4BHK · Koregaon Park · 2,400 sq ft — Aarti Mehta`. **No amount is ever set** (the studio never quotes prices). A decision later overridden to a decline moves the deal to closed/lost.
    - A HubSpot outage never affects calls or designer emails. Failed pushes are retried by the daily sweep, up to 5 times.
 6. **In the Vaani dashboard** (these three steps can't be done through their API):
-   - **Settings → Webhooks:** add the URL from `npm run webhook:url` (`https://<your-app>/api/vaani/webhook?token=…`).
+   - **Developers → Webhooks → Add → "Agent Webhook":** Endpoint URL = the address from `npm run webhook:url` (`https://<your-app>/api/vaani/webhook?token=…`); events = *Call Post-Processing* and *Call Ended*; **Select Agent(s) = Aangan Studio** (required); Enabled on; Secret blank. Use *Test Connectivity*, then save.
    - **Settings → Telephony:** provision a number, or connect your SIP trunk, and assign it to "Aangan Studio". Then publish the agent.
    - If Vaani also shows a webhook signing secret, put it in `VAANI_WEBHOOK_SECRET` (optional: the token already authenticates requests).
 7. **Resend.** Verify the studio's sending domain and set `EMAIL_FROM`. Until then Resend only delivers to the account owner's own address, so use that for `CALL_REPORT_EMAIL` first. Add a webhook to `/api/resend/webhook` for `email.bounced` and put its secret in `RESEND_WEBHOOK_SECRET`.
