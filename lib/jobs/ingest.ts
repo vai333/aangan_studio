@@ -15,6 +15,8 @@ export interface IngestInput {
   source: "webhook" | "sync";
   /** Seconds from ring to pick-up, only when the source reports it (the webhook does not). */
   answeredAfterSec?: number | null;
+  /** The start time is Vaani's own timestamp, so it may overwrite an earlier derived one. */
+  startExact?: boolean;
   /** call_ended carries no transcript: create a placeholder, never overwrite a real post-call row. */
   placeholder?: boolean;
 }
@@ -43,12 +45,12 @@ export async function ingestCall(i: IngestInput): Promise<IngestResult | null> {
          on conflict (provider, provider_call_id) do update set
            caller_id = coalesce(excluded.caller_id, calls.caller_id),
            caller_phone = case when excluded.caller_phone = 'unknown' then calls.caller_phone else excluded.caller_phone end,
-           started_at = excluded.started_at, duration_sec = excluded.duration_sec, status = excluded.status,
-           end_reason = excluded.end_reason, transcript = excluded.transcript, recording_url = excluded.recording_url,
+           started_at = case when $13::boolean then excluded.started_at else calls.started_at end, duration_sec = excluded.duration_sec, status = excluded.status,
+           end_reason = excluded.end_reason, transcript = excluded.transcript, recording_url = coalesce(excluded.recording_url, calls.recording_url),
            raw_payload = excluded.raw_payload,
            grade_status = case when calls.grade_status = 'done' and calls.transcript = excluded.transcript then 'done' else calls.grade_status end
          returning id, status, started_at`,
-        [i.providerCallId, i.source, callerId, i.phone, i.startedAt, i.answeredAfterSec ?? null, i.durationSec, i.status, i.endReason, json(i.transcript), i.recordingUrl, json(i.raw)]);
+        [i.providerCallId, i.source, callerId, i.phone, i.startedAt, i.answeredAfterSec ?? null, i.durationSec, i.status, i.endReason, json(i.transcript), i.recordingUrl, json(i.raw), i.startExact ?? false]);
   const row = rows[0] ?? (await q1("select id, status, started_at from calls where provider = 'vaani' and provider_call_id = $1", [i.providerCallId]));
   if (!row) return null;
   return { id: row.id, status: row.status, startedAt: row.started_at, created: !existing };

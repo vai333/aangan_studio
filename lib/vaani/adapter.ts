@@ -21,6 +21,8 @@ export interface VaaniEvent {
   transcript: TranscriptTurn[];
   recordingUrl: string | null;
   callerPhone: string | null;
+  /** true when startedAt is Vaani's own timestamp rather than end − duration */
+  startExact?: boolean;
 }
 
 const safeEq = (x: string, y: string) => { const a = Buffer.from(x), b = Buffer.from(y); return a.length === b.length && timingSafeEqual(a, b); };
@@ -100,7 +102,7 @@ export function normalize(p: P): VaaniEvent | null {
       // post-processing carries the exact start; call_ended only the end, so derive it from the duration
       startedAt: validIso(d.call_started_at) ?? new Date(end.getTime() - durationSec * 1000).toISOString(), durationSec,
       endReason: d.end_reason ?? p.end_reason ?? null,
-      transcript, recordingUrl: d.recording_url ?? null,
+      transcript, recordingUrl: d.recording_url ?? null, startExact: !!validIso(d.call_started_at),
       callerPhone: realPhone(d.phone_number) ?? realPhone(d.from_number) ?? realPhone(d.caller_number) ?? realPhone(p.from_number) ?? realPhone(p.from),
     };
   }

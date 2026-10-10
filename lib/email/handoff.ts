@@ -14,7 +14,8 @@ export function subjectLine(call: Call, g: Grading, decision: Decision, priority
   if (x.carpet_sqft) parts.push(fmtSqft(x.carpet_sqft));
   // prefer the month the caller said; a week count converted to a month can land a month early
   const when = monthFromText(x.timeline_text) ?? (x.weeks_until_needed ? monthLabel(call.started_at, x.weeks_until_needed) : null);
-  if (when) parts.push(`by ${when}`);
+  if (x.open_to_later_start) parts.push("flexible start");
+  else if (when) parts.push(`by ${when}`);
   if (g.flags.vip_referral) parts.push("VIP referral");
   else if (x.referral_source && !/instagram|google|linkedin/i.test(x.referral_source)) parts.push("Referral");
   if (g.flags.repeat_caller) parts.push("Repeat caller");

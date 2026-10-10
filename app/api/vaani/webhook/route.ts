@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     // Post-call carries the transcript and always wins; call_ended only creates a placeholder.
     const call = await ingestCall({
       providerCallId: ev.providerCallId, phone, startedAt: ev.startedAt, durationSec: ev.durationSec, endReason: ev.endReason,
-      status, transcript: ev.transcript, recordingUrl: ev.recordingUrl, raw: payload, source: "webhook", placeholder: ev.kind !== "post_call",
+      status, transcript: ev.transcript, recordingUrl: ev.recordingUrl, raw: payload, source: "webhook", startExact: ev.startExact, placeholder: ev.kind !== "post_call",
     });
     if (!call) return NextResponse.json({ ok: true, note: "placeholder exists" });
 
