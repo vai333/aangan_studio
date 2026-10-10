@@ -38,7 +38,7 @@ function noteHtml(call: Call, a: Assessment, decision: Decision): string {
   ];
   const transcript = call.transcript.map((t) => `<b>${t.speaker === "agent" ? "Aangan" : "Caller"}:</b> ${esc(t.text)}`).join("<br>").slice(0, 40_000);
   return [
-    `<p><b>Call ${new Date(call.started_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })} · ${call.status === "missed" ? "missed" : Math.round(call.duration_sec / 60 * 10) / 10 + " min"} · ${esc(call.caller_phone)}</b></p>`,
+    `<p><b>Call ${new Date(call.started_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })} · ${call.status === "missed" ? "missed" : Math.round(call.duration_sec / 60 * 10) / 10 + " min"} · ${call.caller_phone === "unknown" ? "no phone number (web call)" : esc(call.caller_phone)}</b></p>`,
     `<p><b>Outcome: ${DECISION_LABEL[decision]}</b>${decision === "QUALIFIED" || decision === "QUALIFIED_WITH_NOTES" ? ` · priority ${a.priority}/100` : ""}<br>${a.decision_reasons.map(esc).join("<br>")}</p>`,
     `<p>${esc(g.summary)}</p>`,
     call.status !== "missed" && decision !== "ESCALATION"
