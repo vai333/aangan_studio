@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # One-shot: push to GitHub, create/link the Vercel project, copy env vars, deploy, then set APP_URL and redeploy.
 # Usage:  scripts/deploy.sh [github-owner/repo]        default: vai333/aangan_studio
+#         SKIP_GITHUB=1 scripts/deploy.sh               deploy to Vercel without pushing to GitHub
 # Auth:   GitHub (git push prompts or uses your saved login) and Vercel (`npx vercel login`, or export VERCEL_TOKEN).
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -8,9 +9,13 @@ REPO="${1:-vai333/aangan_studio}"
 PROJECT="aangan-studio"
 TOKEN_ARGS=(); [ -n "${VERCEL_TOKEN:-}" ] && TOKEN_ARGS=(--token "$VERCEL_TOKEN")
 
-echo "→ 1/6 GitHub"
-git remote get-url origin >/dev/null 2>&1 || git remote add origin "https://github.com/$REPO.git"
-git push -u origin main
+if [ "${SKIP_GITHUB:-0}" = "1" ]; then
+  echo "→ 1/6 GitHub: skipped (SKIP_GITHUB=1). Vercel will deploy your local files directly."
+else
+  echo "→ 1/6 GitHub"
+  git remote get-url origin >/dev/null 2>&1 || git remote add origin "https://github.com/$REPO.git"
+  git push -u origin main
+fi
 
 echo "→ 2/6 Vercel project"
 npx vercel whoami "${TOKEN_ARGS[@]}" >/dev/null 2>&1 || npx vercel login
