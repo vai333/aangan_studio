@@ -3,7 +3,7 @@ import { q1 } from "../db";
 import { gradeCall } from "../jobs/grade";
 import { ingestCall, mergeDropped } from "../jobs/ingest";
 import { classify, toE164 } from "./adapter";
-import { fetchHistory, fetchTranscript, vaaniConfigured, type HistoryItem } from "./api";
+import { fetchCallById, fetchHistory, fetchTranscript, vaaniConfigured, type HistoryItem } from "./api";
 
 export interface SyncResult { fetched: number; imported: number; updated: number; skipped: number; graded: number; error?: string }
 
@@ -64,4 +64,26 @@ export async function syncFromVaani(opts: { pages?: number; pageSize?: number; g
     r.error = String(e instanceof Error ? e.message : e);
   }
   return r;
+}
+
+/**
+ * Import a single call by its Vaani call id (from Vaani → Call History). The recovery path when the
+ * webhook hasn't been connected yet, or Vaani's history API is down. Vaani call ids embed the start
+ * time as epoch seconds ("inbound-1776774443-863aa698"); the caller's number is optional.
+ */
+export async function importVaaniCall(callId: string, phone?: string): Promise<{ ok: boolean; message: string; id?: string }> {
+  const id = callId.trim();
+  if (!id) return { ok: false, message: "Enter the Vaani call ID." };
+  if (!vaaniConfigured()) return { ok: false, message: "VAANI_API_KEY is not set." };
+  const call = await fetchCallById(id);
+  if (!call) return { ok: false, message: "Vaani has no transcript for that call ID yet. Check the ID in Vaani → Call History; a transcript appears a minute or so after the call ends." };
+  const epoch = id.match(/(?:^|[^0-9])(1[5-9]\d{8})(?:[^0-9]|$)/)?.[1];
+  const startedAt = epoch ? new Date(Number(epoch) * 1000).toISOString() : new Date().toISOString();
+  const number = toE164(phone?.trim() || null);
+  const status = classify({ kind: "post_call", event: "import", providerCallId: id, startedAt, durationSec: call.durationSec, endReason: null, transcript: call.turns, recordingUrl: null, callerPhone: null });
+  const saved = await ingestCall({ providerCallId: id, phone: number, startedAt, durationSec: call.durationSec, endReason: null, status, transcript: call.turns, recordingUrl: null, raw: { imported: true, summary: call.summary }, source: "sync" });
+  if (!saved) return { ok: false, message: "Could not store the call." };
+  await mergeDropped(saved.id, number, saved.startedAt);
+  try { await gradeCall(saved.id); } catch (e) { return { ok: true, id: saved.id, message: `Imported, but grading failed (${String(e).slice(0, 90)}). The daily sweep will retry.` }; }
+  return { ok: true, id: saved.id, message: `Imported and graded.${number === "unknown" ? " Caller number unknown, so it won't be mirrored to HubSpot." : ""}` };
 }

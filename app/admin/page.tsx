@@ -7,12 +7,15 @@ import { fmtAgo, fmtDuration, fmtWhen, inr, inrRange, pct } from "@/lib/format";
 import { computeMetrics, periodRange, PERIODS } from "@/lib/metrics";
 import { DECISION_LABEL, DECLINE_LABEL, effectiveDecision, isQualified, type Decision } from "@/lib/types";
 import { callerName, flagsFor, projectLine } from "@/lib/view";
+import { mode } from "@/lib/data/repo";
+import { vaaniStatus } from "@/lib/vaani/status";
 
 const ORDER: Decision[] = ["QUALIFIED", "QUALIFIED_WITH_NOTES", "NURTURE", "INCOMPLETE", "ESCALATION", "NOT_QUALIFIED"];
 
 export default async function Today({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
   const p = parsePeriod((await searchParams).p);
   const [records, s] = await Promise.all([listRecords(), getSettings()]);
+  const vs = mode() === "live" && records.length === 0 ? await vaaniStatus() : null;
   const t = now();
   const range = periodRange(p, t);
   const m = computeMetrics(records, s, range, t);
@@ -27,6 +30,12 @@ export default async function Today({ searchParams }: { searchParams: Promise<{ 
 
   return (
     <div className="space-y-6">
+      {vs && vs.events.count === 0 && (
+        <Link href="/admin/settings#vaani" className="card block border-warn p-4 text-sm hover:border-ink">
+          <b>No call has reached the desk yet.</b> <span className="text-ink-2">Vaani hasn&apos;t sent this site any event: {!vs.agent.published ? "the agent isn't published, " : ""}{!vs.agent.inboundNumber ? "no phone number is assigned, " : ""}and the webhook address may not be set. See the checklist →</span>
+        </Link>
+      )}
+
       {/* The 5-second answer */}
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="max-w-3xl">

@@ -5,7 +5,7 @@ import {
 } from "@/lib/data/repo";
 import type { Decision, Settings } from "@/lib/types";
 import { dbConfigured } from "@/lib/db";
-import { syncFromVaani, type SyncResult } from "@/lib/vaani/sync";
+import { importVaaniCall, syncFromVaani, type SyncResult } from "@/lib/vaani/sync";
 import { hubspotConfigured, inspectHubspot, type PipelineInfo } from "@/lib/hubspot/client";
 import { callsNeedingHubspot, pushCallToHubspot } from "@/lib/hubspot/sync";
 
@@ -97,4 +97,12 @@ export async function hubspotBackfillAction(): Promise<{ pushed: number; failed:
   }
   revalidatePath("/admin", "layout");
   return { pushed, failed, remaining: (await callsNeedingHubspot(500)).length };
+}
+
+export async function importVaaniCallAction(callId: string, phone: string): Promise<{ ok: boolean; message: string; id?: string }> {
+  await requireAdmin();
+  if (!dbConfigured()) return { ok: false, message: "Demo mode: set DATABASE_URL to import real calls." };
+  const r = await importVaaniCall(callId, phone);
+  revalidatePath("/admin", "layout");
+  return r;
 }

@@ -74,6 +74,25 @@ export async function fetchTranscript(item: HistoryItem): Promise<TranscriptTurn
   return [];
 }
 
+export interface CallById { turns: TranscriptTurn[]; durationSec: number; summary: string | null }
+
+/** Read one call by its Vaani call id: transcript (+ a duration inferred from its [HH:MM:SS] stamps). */
+export async function fetchCallById(callId: string): Promise<CallById | null> {
+  for (const path of [`/api/transcript/${encodeURIComponent(callId)}`, `/api/call_details/${encodeURIComponent(callId)}`]) {
+    try {
+      const r = await get(path);
+      if (!r.ok) continue;
+      const raw: unknown = typeof r.body === "string" ? r.body : r.body?.transcription ?? r.body?.transcript ?? r.body;
+      const turns = parseAnyTranscript(raw);
+      if (!turns.length) continue;
+      const stamps = typeof raw === "string" ? [...raw.matchAll(/\[(\d\d):(\d\d):(\d\d)\]/g)] : [];
+      const last = stamps.at(-1);
+      return { turns, durationSec: last ? +last[1] * 3600 + +last[2] * 60 + +last[3] : turns.length * 8, summary: r.body?.summary ?? null };
+    } catch { /* try the next endpoint */ }
+  }
+  return null;
+}
+
 /** Caller's number comes from the Call History API, not the webhook. */
 export async function lookupCallerPhone(providerCallId: string): Promise<string | null> {
   if (!vaaniConfigured()) return null;

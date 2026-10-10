@@ -13,7 +13,7 @@ export const maxDuration = 60;
 export async function POST(req: NextRequest) {
   const raw = await req.text();
   const sig = authorizeWebhook(raw, req.headers, req.nextUrl.searchParams.get("token"));
-  if (!sig.ok) return NextResponse.json({ error: sig.why }, { status: 401 });
+  if (!sig.ok) { console.warn("vaani webhook rejected:", sig.why); return NextResponse.json({ error: sig.why }, { status: 401 }); }
   if (!dbConfigured()) return NextResponse.json({ error: "DATABASE_URL not set (demo mode)" }, { status: 503 });
 
   let payload: unknown;

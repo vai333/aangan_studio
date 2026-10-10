@@ -6,6 +6,7 @@ import { fmtDuration, fmtWhen, maskPhone } from "@/lib/format";
 import { effectiveDecision, isQualified } from "@/lib/types";
 import { callerName, flagsFor, projectLine } from "@/lib/view";
 import { CallFilters } from "./filters";
+import { ImportBox } from "./import-box";
 import { SyncButton } from "./sync-button";
 
 type SP = { d?: string; a?: string; f?: string; q?: string; s?: string };
@@ -47,6 +48,7 @@ export default async function Calls({ searchParams }: { searchParams: Promise<SP
         </div>
         <div className="flex items-center gap-4"><SyncButton /><p className="text-sm text-muted tnum">{rows.length} of {records.filter((r) => !r.call.merged_into).length}</p></div>
       </header>
+      <ImportBox />
       <Suspense><CallFilters areas={areas} /></Suspense>
 
       <div className="card overflow-hidden">
