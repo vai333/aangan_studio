@@ -2,7 +2,7 @@
 // designer on the panel: "If I got this at 9pm, could I walk into the
 // consultation without re-asking anything?"
 import { CRITERION_LABEL, RUBRIC_KEYS, type Call, type CriterionKey, type Decision, type Grading, type Judgement } from "../types";
-import { fmtSqft, monthLabel } from "../format";
+import { fmtSqft, monthFromText, monthLabel } from "../format";
 
 export const MARK: Record<string, string> = { pass: "✓", unclear: "?", fail: "✗" };
 
@@ -12,7 +12,9 @@ export function subjectLine(call: Call, g: Grading, decision: Decision, priority
   const what = x.bhk ? `${x.bhk}BHK` : x.property_type === "villa" ? "Villa" : x.segment === "commercial" ? "Office" : "Home";
   const parts = [`${what} ${x.locality ?? "locality TBC"}`];
   if (x.carpet_sqft) parts.push(fmtSqft(x.carpet_sqft));
-  if (x.weeks_until_needed) parts.push(`by ${monthLabel(call.started_at, x.weeks_until_needed)}`);
+  // prefer the month the caller said; a week count converted to a month can land a month early
+  const when = monthFromText(x.timeline_text) ?? (x.weeks_until_needed ? monthLabel(call.started_at, x.weeks_until_needed) : null);
+  if (when) parts.push(`by ${when}`);
   if (g.flags.vip_referral) parts.push("VIP referral");
   else if (x.referral_source && !/instagram|google|linkedin/i.test(x.referral_source)) parts.push("Referral");
   if (g.flags.repeat_caller) parts.push("Repeat caller");

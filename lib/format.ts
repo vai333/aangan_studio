@@ -14,6 +14,18 @@ export function inr(n: number, opts: { compact?: boolean } = {}): string {
 
 export const pct = (n: number, digits = 0) => `${(n * 100).toFixed(digits)}%`;
 
+const MONTH_LABEL = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+const FULL = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
+
+/** The month the caller actually named ("by March", "January start"), if any. "may" only counts after a preposition ("by May"), never as a verb. */
+export function monthFromText(text: string | null | undefined): string | null {
+  const t = (text ?? "").toLowerCase();
+  const named = t.match(/\b(january|february|march|april|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sept?|oct|nov|dec)\b/);
+  if (named) { const idx = FULL.findIndex((f) => f.startsWith(named[1].slice(0, 3))); return MONTH_LABEL[idx]; }
+  return /\b(?:by|in|before|until|till|from|end of|early|mid|late)\s+may\b/.test(t) ? "May" : null;
+}
+
 export function monthLabel(fromIso: string, weeks: number): string {
   const d = new Date(new Date(fromIso).getTime() + weeks * 7 * 864e5);
   return d.toLocaleString("en-IN", { month: "short", timeZone: IST });
