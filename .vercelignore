@@ -1,0 +1,9 @@
+# Never upload secrets or local artefacts as deployment source. Env vars are set separately in Vercel.
+.env
+.env.*
+!.env.example
+node_modules
+.next
+.vercel
+evals/results
+*.tsbuildinfo
