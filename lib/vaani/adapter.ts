@@ -70,30 +70,35 @@ export function parseTranscriptString(s: string): TranscriptTurn[] {
 
 type P = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
+/** "N/A", empty or a browser (WebRTC) test call has no real phone number. */
+const realPhone = (v: unknown): string | null => {
+  const t = typeof v === "string" ? v.trim() : "";
+  return t && t.replace(/\D/g, "").length >= 8 ? t : null;
+};
+/** Vaani documents call_duration in ms for post-processing but sends seconds on call_ended: no real call lasts 10,000 s. */
+const toSeconds = (n: unknown) => { const v = Number(n ?? 0); return Math.round(v > 10_000 ? v / 1000 : v); };
+
 export function normalize(p: P): VaaniEvent | null {
   const event: string = p.event ?? p.type ?? "";
-  // Vaani Research — post-call
-  if (event === "call_postprocessing" && p.data) {
-    const d = p.data;
-    const durationSec = Math.round(Number(d.call_duration ?? 0) / 1000);
+  // Vaani Research. Shapes confirmed from a real call on 2026-10-10:
+  //   call_ended { event, timestamp, from, to, data: { room_name, end_reason, transcript:"[hh:mm:ss] AGENT: …", phone_number, call_duration (s), technical_issue } }
+  //   call_postprocessing (per docs) { event, call_id, data: { room_name, call_id, call_duration, summary, entities, recording_url, transcript } }
+  // The call is keyed by room_name (present on both), falling back to call_id.
+  if ((event === "call_postprocessing" || event === "call_ended") && (p.data || p.room_name || p.call_id)) {
+    const d = p.data ?? p;
+    const id = d.room_name ?? p.room_name ?? d.call_id ?? p.call_id;
+    if (!id) { console.warn("vaani event without a call id:", event); return null; }
+    const durationSec = toSeconds(d.call_duration ?? p.call_duration);
     const end = p.timestamp ? new Date(p.timestamp) : new Date();
+    const transcript = typeof d.transcript === "string" ? parseTranscriptString(d.transcript) : [];
     return {
-      kind: "post_call", event, providerCallId: String(d.call_id ?? p.call_id),
+      // call_ended carries the transcript too, so it is graded straight away; without one it only makes a placeholder
+      kind: transcript.length || event === "call_postprocessing" ? "post_call" : "call_ended",
+      event, providerCallId: String(id),
       startedAt: new Date(end.getTime() - durationSec * 1000).toISOString(), durationSec,
-      endReason: d.end_reason ?? null,
-      transcript: typeof d.transcript === "string" ? parseTranscriptString(d.transcript) : [],
-      recordingUrl: d.recording_url ?? null,
-      callerPhone: d.from_number ?? d.caller_number ?? null, // not in the documented payload; enriched via Call History API
-    };
-  }
-  // Vaani Research — call ended (arrives even when post-processing doesn't)
-  if (event === "call_ended") {
-    const durationSec = Number(p.call_duration ?? 0);
-    const end = p.timestamp ? new Date(p.timestamp) : new Date();
-    return {
-      kind: "call_ended", event, providerCallId: String(p.call_id ?? p.room_name),
-      startedAt: new Date(end.getTime() - durationSec * 1000).toISOString(), durationSec,
-      endReason: p.end_reason ?? null, transcript: [], recordingUrl: null, callerPhone: p.from_number ?? null,
+      endReason: d.end_reason ?? p.end_reason ?? null,
+      transcript, recordingUrl: d.recording_url ?? null,
+      callerPhone: realPhone(d.phone_number) ?? realPhone(d.from_number) ?? realPhone(d.caller_number) ?? realPhone(p.from_number) ?? realPhone(p.from),
     };
   }
   // vaaniai.io — call.completed / call.failed / call.no_answer [VERIFY IN VAANI DOCS]
@@ -127,7 +132,8 @@ export function classify(e: VaaniEvent): CallStatus {
 export function toE164(p: string | null): string {
   if (!p) return "unknown";
   const d = p.replace(/\D/g, "");
+  if (d.length < 8) return "unknown";
   if (d.length === 10) return `+91${d}`;
   if (d.length === 12 && d.startsWith("91")) return `+${d}`;
-  return p.startsWith("+") ? `+${d}` : `+${d}`;
+  return `+${d}`;
 }

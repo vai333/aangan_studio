@@ -95,7 +95,7 @@ export async function fetchCallById(callId: string): Promise<CallById | null> {
 
 /** Caller's number comes from the Call History API, not the webhook. */
 export async function lookupCallerPhone(providerCallId: string): Promise<string | null> {
-  if (!vaaniConfigured()) return null;
+  if (!vaaniConfigured() || /^webrtc-/.test(providerCallId)) return null; // browser test calls have no phone number
   try {
     const { items } = await fetchHistory(1, 50);
     const hit = items.find((i) => i.call_id === providerCallId);
