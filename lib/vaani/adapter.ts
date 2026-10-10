@@ -130,7 +130,10 @@ export function classify(e: VaaniEvent): CallStatus {
   const callerTurns = e.transcript.filter((t) => t.speaker === "caller" && t.text.length > 2).length;
   if (e.durationSec < 5 || (e.kind === "post_call" && callerTurns === 0)) return "missed";
   if (/no_answer|failed|rejected/i.test(e.endReason ?? "")) return "missed";
-  if (e.durationSec < 90 && callerTurns <= 1) return "dropped";
+  // Dropped = the line cut out with the caller's words unanswered. A short call where the agent replied last
+  // (e.g. a one-line "I'm in Nashik" followed by a polite decline) is a complete call, not a dropped one.
+  const last = e.transcript.at(-1);
+  if (e.durationSec < 90 && callerTurns <= 1 && (!last || last.speaker === "caller")) return "dropped";
   return "answered";
 }
 

@@ -35,5 +35,9 @@ check("call_started / ringing are ignored", normalize({ event: "call_started", r
 check("an event with no call id is dropped (never stored as 'undefined')", normalize({ event: "call_ended", data: { end_reason: "x" } }) === null);
 const noTranscript = normalize({ event: "call_ended", timestamp: "2026-10-10T13:00:00Z", data: { room_name: "r1", call_duration: 2, transcript: "" } })!;
 check("call_ended with no transcript is a placeholder, classified missed", noTranscript.kind === "call_ended" && classify({ ...noTranscript, kind: "post_call" }) === "missed");
+const shortDecline = normalize({ event: "call_postprocessing", call_id: "d1", data: { room_name: "d1", call_duration: 60.2, call_started_at: "2026-10-10T15:01:00Z", transcript: "[00:00:01] AGENT: Namaste, Aangan Studio.\n[00:00:05] USER: I am Suresh from Nashik. Can you take up my home office?\n[00:00:14] AGENT: We only work in Pune and PCMC, so I am sorry we cannot help. Goodbye." } })!;
+check("a short call where the agent answered last (a quick decline) is answered, not 'dropped'", classify(shortDecline) === "answered");
+const dropped = normalize({ event: "call_postprocessing", call_id: "d2", data: { room_name: "d2", call_duration: 12, call_started_at: "2026-10-10T15:01:00Z", transcript: "[00:00:01] AGENT: Namaste, Aangan Studio.\n[00:00:05] USER: Hi, I wanted to inquire about" } })!;
+check("the line cutting out mid-sentence IS dropped (T17 case)", classify(dropped) === "dropped");
 console.log(fails ? `\n${fails} FAILED` : "\nALL CHECKS PASSED");
 process.exit(fails ? 1 : 0);
