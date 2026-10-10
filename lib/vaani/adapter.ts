@@ -75,6 +75,8 @@ const realPhone = (v: unknown): string | null => {
   const t = typeof v === "string" ? v.trim() : "";
   return t && t.replace(/\D/g, "").length >= 8 ? t : null;
 };
+const validIso = (v: unknown): string | null => { const t = typeof v === "string" ? new Date(v) : null; return t && !isNaN(t.getTime()) ? t.toISOString() : null; };
+
 /** Vaani documents call_duration in ms for post-processing but sends seconds on call_ended: no real call lasts 10,000 s. */
 const toSeconds = (n: unknown) => { const v = Number(n ?? 0); return Math.round(v > 10_000 ? v / 1000 : v); };
 
@@ -95,7 +97,8 @@ export function normalize(p: P): VaaniEvent | null {
       // call_ended carries the transcript too, so it is graded straight away; without one it only makes a placeholder
       kind: transcript.length || event === "call_postprocessing" ? "post_call" : "call_ended",
       event, providerCallId: String(id),
-      startedAt: new Date(end.getTime() - durationSec * 1000).toISOString(), durationSec,
+      // post-processing carries the exact start; call_ended only the end, so derive it from the duration
+      startedAt: validIso(d.call_started_at) ?? new Date(end.getTime() - durationSec * 1000).toISOString(), durationSec,
       endReason: d.end_reason ?? p.end_reason ?? null,
       transcript, recordingUrl: d.recording_url ?? null,
       callerPhone: realPhone(d.phone_number) ?? realPhone(d.from_number) ?? realPhone(d.caller_number) ?? realPhone(p.from_number) ?? realPhone(p.from),

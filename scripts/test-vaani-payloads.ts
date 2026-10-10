@@ -19,6 +19,13 @@ check("real call_ended: duration in seconds, start = end − duration", e1.durat
 check("browser test call has no phone number", e1.callerPhone === null && toE164(e1.callerPhone) === "unknown" && toE164("N/A") === "unknown");
 check("a real two-sided call is classified answered", classify(e1) === "answered");
 
+const realPost = normalize({ event: "call_postprocessing", call_id: "webrtc-1791639059-adb47bb4", timestamp: "2026-10-10T13:36:01.901243+00:00", from: "web-user", to: "Aangan Studio",
+  data: { call_id: "webrtc-1791639059-adb47bb4", room_name: "webrtc-1791639059-adb47bb4", call_duration: 126.65, call_started_at: "2026-10-10T13:31:03.499463+00:00", call_ended_at: "2026-10-10T13:33:10.852823+00:00", phone_number: "web-user",
+    recording_url: "https://app.vaanivoice.ai/api/stream/webrtc-1791639059-adb47bb4?token=x", summary: "s", entities: { bhk: 2 }, transcript: "[13:31:07] AGENT: Hi\n[13:31:16] USER: Can you hear me?\n[13:31:29] USER: 2BHK in Baner." } })!;
+check("REAL post-processing: duration is seconds (126.65 -> 127), not ms (which made it 0 and 'missed')", realPost.durationSec === 127 && classify(realPost) === "answered", `${realPost.durationSec}s -> ${classify(realPost)}`);
+check("REAL post-processing: exact start time used, same call id as call_ended", realPost.startedAt === "2026-10-10T13:31:03.499Z" && realPost.providerCallId === e1.providerCallId, realPost.startedAt);
+check("REAL post-processing: phone 'web-user' is not a number; recording link kept", toE164(realPost.callerPhone) === "unknown" && !!realPost.recordingUrl);
+
 const post = normalize({ event: "call_postprocessing", call_id: "inbound-1790000000-abc", timestamp: "2026-10-10T14:00:00Z", data: { room_name: "inbound-1790000000-abc", call_id: "inbound-1790000000-abc", call_duration: 245000, end_reason: "user_hangup", recording_url: "https://x/r.mp3", from_number: "+919811112222", transcript: "[00:00:01] AGENT: Hi\n[00:00:04] USER: Hello, 3BHK in Kothrud." } })!;
 check("post-processing: same call id as call_ended would use; ms converted to seconds", post.providerCallId === "inbound-1790000000-abc" && post.durationSec === 245);
 check("post-processing: real caller number kept", toE164(post.callerPhone) === "+919811112222");
