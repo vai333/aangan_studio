@@ -19,7 +19,8 @@
     "test:hubspot": "tsx --conditions=react-server scripts/e2e-hubspot.ts",
     "dev:demo": "node scripts/embed-context.mjs && AANGAN_DEMO=1 next dev -p 3100",
     "webhook:url": "node scripts/webhook-url.mjs",
-    "vaani:import": "tsx --conditions=react-server --env-file-if-exists=.env.local scripts/vaani-import.ts"
+    "vaani:import": "tsx --conditions=react-server --env-file-if-exists=.env.local scripts/vaani-import.ts",
+    "vaani:simulate": "tsx --env-file-if-exists=.env.local scripts/prompt-sim.mts"
   },
   "dependencies": {
     "@google/genai": "^2.28.0",

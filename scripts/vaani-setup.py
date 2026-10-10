@@ -31,17 +31,22 @@ persona = {
             "let_user_speak_first": False,
         },
     },
-    "senses_capabilities": {"language": "en", "auto_detect": True},
+    "senses_capabilities": {
+        "language": "en", "auto_detect": True,
+        # Short replies = shorter calls. Vaani bills per minute, so this is the cheapest lever after the prompt itself.
+        "brain": {"llm": {"primary": {"parameters": {"max_tokens": 150}}}},
+    },
 }
 experience = {
     "conversational_experience": {"eagerness_to_speak": "balanced"},
     "settings": {
         "idle_conversation_settings": {
-            "pulse_check": True, "end_conversation_on_idle": True, "idle_call_warning_timeout": 10, "idle_call_hangup_timeout": 25,
+            "pulse_check": True, "end_conversation_on_idle": True, "idle_call_warning_timeout": 7, "idle_call_hangup_timeout": 12,
             "idle_call_warning_message": "Are you still there?",
             "idle_call_hangup_message": "It seems we got disconnected. Please call us back any time. Goodbye.",
         },
-        "call_settings": {"max_call_duration": 15, "max_duration_enabled": True},
+        "call_settings": {"max_call_duration": 7, "max_duration_enabled": True},   # intake takes ~3 min; this caps a runaway call
+        "end_call": {"enabled": True, "end_call_phrase": "goodbye", "hangup_timeout": 2},   # hang up right after the agent's closing "Goodbye"
     },
 }
 def dp(name, prompt, nullable=True): return {"name": name, "prompt": prompt, "values": [], "nullable": nullable}
