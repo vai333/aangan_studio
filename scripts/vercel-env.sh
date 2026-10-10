@@ -18,7 +18,7 @@ for k in "${REQUIRED[@]}"; do [ -n "${!k:-}" ] || { echo "✗ $k is empty"; miss
 [ $missing = 0 ] || exit 1
 
 push() { # name value
-  npx vercel env rm "$1" production --yes "${TOKEN_ARGS[@]}" >/dev/null 2>&1 || true   # replace if it exists
-  printf '%s' "$2" | npx vercel env add "$1" production "${TOKEN_ARGS[@]}" >/dev/null && echo "✓ $1"
+  npx vercel env rm "$1" production --yes ${TOKEN_ARGS[@]+"${TOKEN_ARGS[@]}"} >/dev/null 2>&1 || true   # replace if it exists
+  printf '%s' "$2" | npx vercel env add "$1" production ${TOKEN_ARGS[@]+"${TOKEN_ARGS[@]}"} >/dev/null && echo "✓ $1"
 }
 for k in "${REQUIRED[@]}" "${OPTIONAL[@]}"; do [ -n "${!k:-}" ] && push "$k" "${!k}" || { [[ " ${OPTIONAL[*]} " == *" $k "* ]] && echo "· $k not set (optional)"; }; done
