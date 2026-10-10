@@ -1,0 +1,125 @@
+@import "tailwindcss";
+
+/* Aangan — "courtyard". Limestone ground, terracotta accent, ink text.
+   Decision colours validated for CVD + contrast (dataviz validator) in both modes. */
+:root {
+  color-scheme: light;
+  --bg: #f4efe7;
+  --surface: #fffdf9;
+  --surface-2: #f0e9de;
+  --ink: #221c16;
+  --ink-2: #5b5248;
+  --muted: #8a7f73;
+  --line: #e5dccf;
+  --line-strong: #cfc3b3;
+  --accent: #a4492a;
+  --accent-ink: #7f3519;
+  --accent-soft: #f5e2d6;
+  --good: #23854a;
+  --warn: #b77700;
+  --bad: #c0392b;
+
+  --d-qualified: #23854a;
+  --d-notes: #2a78d6;
+  --d-nurture: #d08c00;
+  --d-incomplete: #7a5cc7;
+  --d-escalation: #d03b3b;
+  --d-no: #a39b8f;
+
+  --shadow: 0 1px 0 rgba(34, 28, 22, 0.04), 0 8px 24px -12px rgba(34, 28, 22, 0.12);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #14110e;
+    --surface: #1e1a16;
+    --surface-2: #27211c;
+    --ink: #f3ece2;
+    --ink-2: #c6baab;
+    --muted: #8f8476;
+    --line: #322b24;
+    --line-strong: #463d34;
+    --accent: #e07a52;
+    --accent-ink: #f0a07f;
+    --accent-soft: #3a241a;
+    --good: #3cb371;
+    --warn: #e0a422;
+    --bad: #e66767;
+    --d-qualified: #2f9e5a;
+    --d-notes: #3987e5;
+    --d-nurture: #c98500;
+    --d-incomplete: #9085e9;
+    --d-escalation: #e66767;
+    --d-no: #7d756b;
+    --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #14110e;
+  --surface: #1e1a16;
+  --surface-2: #27211c;
+  --ink: #f3ece2;
+  --ink-2: #c6baab;
+  --muted: #8f8476;
+  --line: #322b24;
+  --line-strong: #463d34;
+  --accent: #e07a52;
+  --accent-ink: #f0a07f;
+  --accent-soft: #3a241a;
+  --good: #3cb371;
+  --warn: #e0a422;
+  --bad: #e66767;
+  --d-qualified: #2f9e5a;
+  --d-notes: #3987e5;
+  --d-nurture: #c98500;
+  --d-incomplete: #9085e9;
+  --d-escalation: #e66767;
+  --d-no: #7d756b;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-good: var(--good);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
+  --font-sans: var(--font-inter), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: var(--font-fraunces), Georgia, serif;
+}
+
+html, body { background: var(--bg); color: var(--ink); }
+body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+
+.font-display { font-family: var(--font-display); font-optical-sizing: auto; letter-spacing: -0.01em; }
+.tnum { font-variant-numeric: tabular-nums; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); }
+.eyebrow { font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+
+/* Courtyard tile pattern used in the brand mark and empty states */
+.tiles {
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 14px 14px;
+}
+
+.focus-ring:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+::selection { background: var(--accent-soft); }
+
+mark.evidence { background: color-mix(in oklab, var(--d-nurture) 22%, transparent); color: inherit; border-radius: 4px; padding: 0 2px; }
+mark.evidence.active { background: color-mix(in oklab, var(--accent) 30%, transparent); box-shadow: 0 0 0 2px var(--accent); }
+
+@media print { .no-print { display: none !important; } }
