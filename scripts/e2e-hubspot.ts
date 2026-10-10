@@ -132,6 +132,15 @@ async function main() {
   check("retry finishes the job without duplicating contact or deal", ok.status === "synced" && row2.note_id && store.deals.size === dealsAfterFail && store.contacts.size === phoneContacts);
   check("a bad token fails cleanly", await (async () => { process.env.HUBSPOT_ACCESS_TOKEN = "wrong"; const r = await inspectHubspot(); process.env.HUBSPOT_ACCESS_TOKEN = "test-token"; return !r.ok && /401/.test(r.error ?? ""); })());
 
+  // repeat caller with a real number: second qualified call joins the existing deal instead of opening another
+  const rep = async (id: string) => { const c = await ingestCall({ providerCallId: id, phone: "+919000000098", startedAt: new Date().toISOString(), durationSec: 120, endReason: null, status: "answered", transcript: [{ speaker: "caller", text: "hi" }], recordingUrl: null, raw: {}, source: "webhook" });
+    await gradeCall(c!.id, { grader: (async () => ({ grading: structuredClone(SEPTEMBER[0].grading!), model: "golden", inputTokens: 1, outputTokens: 1 })) as never }); return c!.id; };
+  const dealsBefore = store.deals.size, notesBefore = store.notes.size;
+  const r1 = await rep("repeat-1"), r2 = await rep("repeat-2");
+  const [s1, s2] = await Promise.all([q("select * from hubspot_syncs where call_id = $1", [r1]), q("select * from hubspot_syncs where call_id = $1", [r2])]);
+  check("repeat caller: same contact, ONE deal (second call joins it)", s1[0].contact_id === s2[0].contact_id && s1[0].deal_id === s2[0].deal_id && store.deals.size === dealsBefore + 1, `${store.deals.size - dealsBefore} new deal(s)`);
+  check("…but each call still gets its own note", store.notes.size === notesBefore + 2);
+
   // a browser/web call has no phone number: mirrored by name, one contact per call, no phone filter sent
   const web = await ingestCall({ providerCallId: "webrtc-1-abc", phone: "unknown", startedAt: "2026-10-10T13:31:03.499Z", durationSec: 127, endReason: null, status: "answered",
     transcript: [{ speaker: "caller", text: "I am Vaibhav, a 2BHK in Hinjewadi." }], recordingUrl: null, raw: {}, source: "webhook" });

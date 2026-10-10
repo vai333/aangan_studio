@@ -123,6 +123,13 @@ export async function pushCallToHubspot(callId: string): Promise<PushResult> {
     // ── deal (real leads only; no amount — the studio never quotes) ──
     const stage = decision === "NURTURE" ? settings.hubspot.stage_nurture : settings.hubspot.stage_new;
     if (wantsDeal(decision)) {
+      // A repeat caller who already has an open deal from us gets this call added to it, not a second deal.
+      if (!dealId && !noPhone) {
+        const open = await q1(
+          "select deal_id from hubspot_syncs where contact_id = $1 and call_id <> $2 and deal_id is not null and last_decision in ('QUALIFIED','QUALIFIED_WITH_NOTES','NURTURE') order by updated_at desc limit 1",
+          [contactId, callId]);
+        if (open) dealId = open.deal_id;
+      }
       if (dealId) await hs("PATCH", `/crm/v3/objects/deals/${dealId}`, { properties: { dealname: dealName(asm, c), dealstage: stage, pipeline: settings.hubspot.pipeline_id } });
       else dealId = (await hs<{ id: string }>("POST", "/crm/v3/objects/deals", {
         properties: { dealname: dealName(asm, c), pipeline: settings.hubspot.pipeline_id, dealstage: stage },
